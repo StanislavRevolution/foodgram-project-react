@@ -1,7 +1,8 @@
 from django.db import models
-from django.contrib.auth import get_user_model
+# from django.contrib.auth import get_user_model
+from django.conf import settings
 
-User = get_user_model()
+# User = get_user_model()
 
 
 class Measure(models.Model):
@@ -34,7 +35,7 @@ class Ingredient(models.Model):
 
 class Tag(models.Model):
     name = models.CharField('Название', max_length=100)
-    hex = models.CharField('Цветовой HEX-код', max_length=15)
+    color = models.CharField('Цветовой HEX-код', max_length=15)
     slug = models.SlugField(max_length=160, unique=True)
 
     def __str__(self):
@@ -47,21 +48,25 @@ class Tag(models.Model):
 
 class Recipe(models.Model):
     author = models.ForeignKey(
-        User,
+        settings.AUTH_USER_MODEL,
         related_name='author',
         on_delete=models.CASCADE,
         verbose_name='Автор'
     )
     title = models.CharField('Название', max_length=500)
     image = models.ImageField('Фото', upload_to="recipes_shots/")
-    description = models.TextField('Описание')
+    text = models.TextField('Описание')
     ingredients = models.ManyToManyField(
         Ingredient,
         related_name='all_ingredients',
         verbose_name='Ингредиенты'
     )
-    tag = models.ManyToManyField(Tag, related_name='tag', verbose_name='Тэг')
-    time = models.PositiveSmallIntegerField('Время приготовления', default=0)
+    tags = models.ManyToManyField(Tag, related_name='tag', verbose_name='Тэг')
+    cooking_time = models.PositiveSmallIntegerField(
+        'Время приготовления',
+        default=0
+    )
+    shop_list = models.BooleanField('Список покупок', default=False)
 
     def __str__(self):
         return self.title
