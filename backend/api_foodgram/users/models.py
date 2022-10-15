@@ -8,14 +8,15 @@ class User(AbstractUser):
     favourite_recipes = models.ManyToManyField(
         Recipe,
         verbose_name='Избранные рецепты',
-        related_name='my_favourite'
-
+        related_name='my_favourite',
+        blank=True
     )
     subscriptions = models.ManyToManyField(
         'self',
         symmetrical=False,
         verbose_name='Подписки на пользователей',
-        related_name='all_subcriptions'
+        related_name='all_subscriptions',
+        blank=True
     )
 
     class Meta:

@@ -2,11 +2,12 @@ from django.db import models
 # from django.contrib.auth import get_user_model
 from django.conf import settings
 
+
 # User = get_user_model()
 
 
 class Measure(models.Model):
-    name = models.CharField("Название", max_length=30)
+    name = models.CharField("Название", max_length=30, null=True)
 
     def __str__(self):
         return self.name
@@ -17,16 +18,18 @@ class Measure(models.Model):
 
 
 class Ingredient(models.Model):
-    name = models.CharField('Название', max_length=300)
+    title = models.CharField('Название', max_length=300)
     amount = models.PositiveSmallIntegerField(default=0)
-    measure = models.ManyToManyField(
+    measure = models.ForeignKey(
         Measure,
         related_name='measure_unit',
-        verbose_name='Единица измерения'
+        verbose_name='Единица измерения',
+        on_delete=models.SET_NULL,
+        null=True
     )
 
     def __str__(self):
-        return self.name
+        return self.title
 
     class Meta:
         verbose_name = 'Ингредиент'
@@ -34,12 +37,12 @@ class Ingredient(models.Model):
 
 
 class Tag(models.Model):
-    name = models.CharField('Название', max_length=100)
+    title = models.CharField('Название', max_length=100)
     color = models.CharField('Цветовой HEX-код', max_length=15)
     slug = models.SlugField(max_length=160, unique=True)
 
     def __str__(self):
-        return self.name
+        return self.title
 
     class Meta:
         verbose_name = 'Тег'
