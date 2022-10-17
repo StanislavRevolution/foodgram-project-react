@@ -1,23 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-from recipes.models import Recipe
 
-
-class User(AbstractUser):
-    favourite_recipes = models.ManyToManyField(
-        Recipe,
-        verbose_name='Избранные рецепты',
-        related_name='my_favourite',
-        blank=True
-    )
-    subscriptions = models.ManyToManyField(
-        'self',
-        symmetrical=False,
-        verbose_name='Подписки на пользователей',
-        related_name='all_subscriptions',
-        blank=True
-    )
+class CustomUser(AbstractUser):
+    first_name = models.CharField('Имя', max_length=30)
+    last_name = models.CharField('Фамилия', max_length=150)
+    email = models.EmailField('Почта')
 
     class Meta:
         ordering = ('username',)

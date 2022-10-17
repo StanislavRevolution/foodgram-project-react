@@ -3,7 +3,7 @@ from django.db import models
 from django.conf import settings
 
 
-# User = get_user_model()
+User = settings.AUTH_USER_MODEL
 
 
 class Measure(models.Model):
@@ -51,7 +51,7 @@ class Tag(models.Model):
 
 class Recipe(models.Model):
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        User,
         related_name='author',
         on_delete=models.CASCADE,
         verbose_name='Автор'
@@ -69,7 +69,6 @@ class Recipe(models.Model):
         'Время приготовления',
         default=0
     )
-    shop_list = models.BooleanField('Список покупок', default=False)
 
     def __str__(self):
         return self.title
@@ -77,3 +76,59 @@ class Recipe(models.Model):
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
+
+
+class ShoppingList(models.Model):
+    user = models.ForeignKey(
+        User,
+        related_name='user_list',
+        on_delete=models.CASCADE,
+        verbose_name='Пользователь'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        related_name='my_list_recipe',
+        on_delete=models.CASCADE,
+        verbose_name='Рецепт'
+    )
+
+    def __str__(self):
+        return str(self.user) + " ; " + str(self.recipe)
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User,
+        related_name='user_favorite',
+        on_delete=models.CASCADE,
+        verbose_name='Пользователь'
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        related_name='my_fav_recipe',
+        on_delete=models.CASCADE,
+        verbose_name='Рецепт'
+    )
+
+    def __str__(self):
+        return str(self.user) + " ; " + str(self.recipe)
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        null=True,
+        on_delete=models.CASCADE,
+        related_name='follower'
+    )
+    author = models.ForeignKey(
+        User,
+        null=True,
+        on_delete=models.CASCADE,
+        related_name='following'
+    )
+
+    def __str__(self):
+        user = self.user
+        author = self.author
+        return str(user) + " ; " + str(author)
