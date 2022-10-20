@@ -92,6 +92,10 @@ class ShoppingList(models.Model):
         verbose_name='Рецепт'
     )
 
+    class Meta:
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+
     def __str__(self):
         return str(self.user) + " ; " + str(self.recipe)
 
@@ -110,6 +114,10 @@ class Favorite(models.Model):
         verbose_name='Рецепт'
     )
 
+    class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Избранные'
+
     def __str__(self):
         return str(self.user) + " ; " + str(self.recipe)
 
@@ -119,14 +127,20 @@ class Follow(models.Model):
         User,
         null=True,
         on_delete=models.CASCADE,
-        related_name='follower'
+        related_name='follower',
+        verbose_name='Пользователь'
     )
     author = models.ForeignKey(
         User,
         null=True,
         on_delete=models.CASCADE,
-        related_name='following'
+        related_name='following',
+        verbose_name='Автор'
     )
+
+    class Meta:
+        verbose_name = 'Подписка'
+        verbose_name_plural = 'Подписки'
 
     def __str__(self):
         user = self.user

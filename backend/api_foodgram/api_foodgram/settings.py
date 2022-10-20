@@ -114,8 +114,10 @@ REST_FRAMEWORK = {
 DJOSER = {
     'LOGIN_FIELD': 'email',
     'SERIALIZERS': {
-        # 'user_registration': 'users.serializers.UserRegistrationSerializer',
-        'user_create': 'users.serializers.UserRegistrationSerializer'
+        'user_create': 'users.serializers.UserRegistrationSerializer',
+        "user": 'users.serializers.UserSerializer',
+        'current_user': 'users.serializers.UserSerializer',
+        'user_list': 'users.serializers.UserSerializer'
 
     },
 }
