@@ -1,22 +1,19 @@
-from djoser.serializers import (
+from djoser.serializers import \
     UserCreateSerializer as BaseUserRegistrationSerializer
-)
 from rest_framework import serializers
-from .models import CustomUser
+
 from recipes.models import Follow
 
 
 class UserRegistrationSerializer(BaseUserRegistrationSerializer):
-    class Meta:
-        model = CustomUser
+    class Meta(BaseUserRegistrationSerializer.Meta):
         fields = ('email', 'username', 'first_name', 'last_name', 'password')
 
 
 class UserSerializer(serializers.ModelSerializer):
     is_subscribed = serializers.SerializerMethodField()
 
-    class Meta:
-        model = CustomUser
+    class Meta(BaseUserRegistrationSerializer.Meta):
         fields = (
             'email',
             'id',
@@ -31,4 +28,3 @@ class UserSerializer(serializers.ModelSerializer):
         if Follow.objects.filter(user=user, author=obj).exists():
             return True
         return False
-
