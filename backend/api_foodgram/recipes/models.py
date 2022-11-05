@@ -79,7 +79,6 @@ class Recipe(models.Model):
         return self.name
 
     class Meta:
-        default_related_name = 'recipe'
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
         constraints = [

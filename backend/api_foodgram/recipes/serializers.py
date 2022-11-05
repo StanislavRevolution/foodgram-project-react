@@ -165,8 +165,7 @@ class RecipesPostSerializer(serializers.ModelSerializer):
             instance, context={'request': self.context.get('request')}).data
 
 
-class FavoriteSerialzer(serializers.ModelSerializer):
+class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')
-
