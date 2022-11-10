@@ -32,16 +32,16 @@ class TagsViewSet(
     """Обработка тегов для рецептов"""
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-    pagination_class = None
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
     """Создание и обработка рецептов"""
     queryset = Recipe.objects.all()
     serializer_class = RecipesPostSerializer
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filterset_fields = ('author', 'shopping_cart', 'favorite', 'tags')
     permission_classes = (IsAuthenticatedForPostAndPatch,)
+    ordering = ('-pub_date',)
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
