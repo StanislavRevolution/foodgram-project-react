@@ -13,12 +13,14 @@ User = get_user_model()
 
 
 class TagSerializer(serializers.ModelSerializer):
+    """Сериализатор для тэгов"""
     class Meta:
         model = Tag
         fields = ('id', 'name', 'color', 'slug')
 
 
 class IngredientsAmountSerializer(serializers.ModelSerializer):
+    """Сериализатор для промежуточной таблицы IngredientAmount"""
     id = serializers.PrimaryKeyRelatedField(
         queryset=Ingredient.objects.all()
     )
@@ -29,6 +31,7 @@ class IngredientsAmountSerializer(serializers.ModelSerializer):
 
 
 class IngredientsSerializer(serializers.ModelSerializer):
+    """Сериализатор для ингредиентов"""
     class Meta:
         model = Ingredient
         fields = ('id', 'name', 'measure_unit')
@@ -41,6 +44,7 @@ class IngredientsSerializer(serializers.ModelSerializer):
 
 
 class RecipesGetSerializer(serializers.ModelSerializer):
+    """Сериализатор для ингредиентов при GET запросах"""
     author = UserSerializer(read_only=True)
     tags = TagSerializer(many=True, read_only=True)
     ingredients = serializers.SerializerMethodField()
@@ -48,21 +52,30 @@ class RecipesGetSerializer(serializers.ModelSerializer):
     is_in_shopping_cart = serializers.SerializerMethodField()
 
     def get_ingredients(self, obj):
+        """Получить ингредиенты, связанные с данным рецептом"""
         return obj.ingredients.values(
             'id', 'name', 'measure_unit',
             amount=F('ingredient_ammount__amount')
         )
 
     def get_is_favorited(self, obj):
+        """Получить True в случае, если рецепт добавлен в избранное, и False,
+        если рецепт отсутствует в избранном пользователя"""
         user = self.context['request'].user
-        if obj in user.favorite_all.all():
-            return True
+        if user.is_authenticated:
+            if obj in user.favorite_all.all():
+                return True
+            return False
         return False
 
     def get_is_in_shopping_cart(self, obj):
+        """Получить True в случае, если рецепт добавлен в список покупок,
+         и False, если рецепт отсутствует в списке покупок пользователя"""
         user = self.context['request'].user
-        if obj in user.shopping_cart_all.all():
-            return True
+        if user.is_authenticated:
+            if obj in user.shopping_cart_all.all():
+                return True
+            return False
         return False
 
     class Meta:
@@ -82,6 +95,7 @@ class RecipesGetSerializer(serializers.ModelSerializer):
 
 
 class RecipesPostSerializer(serializers.ModelSerializer):
+    """Сериализатор для ингредиентов при POST запросах"""
     image = Base64ImageField()
     author = UserSerializer(
         read_only=True,
@@ -110,6 +124,7 @@ class RecipesPostSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        """Проверка времени приготовления, а также существования тэгов в БД"""
         if data['cooking_time'] < 1:
             raise serializers.ValidationError(
                 'Неверно указано время приготовления!'
@@ -166,6 +181,7 @@ class RecipesPostSerializer(serializers.ModelSerializer):
 
 
 class FavoriteSerializer(serializers.ModelSerializer):
+    """Сериализатор для избранных рецептов"""
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')

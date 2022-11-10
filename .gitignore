@@ -130,3 +130,7 @@ dmypy.json
 
 # .idea
 .idea
+/backend/api_foodgram/hello.pdf
+/backend/api_foodgram/pdf.html
+/backend/api_foodgram/report.pdf"
+/backend/api_foodgram/test.pdf

@@ -1,4 +1,3 @@
-# from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -142,6 +141,12 @@ class Follow(models.Model):
     class Meta:
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('user', 'author'),
+                name='unique_user_author'
+            )
+        ]
 
     def __str__(self):
         user = self.user
