@@ -1,6 +1,7 @@
 import io
 
-from django.db.models import F
+import django_filters
+from django.db.models import F, Sum
 from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from reportlab.pdfbase import pdfmetrics
@@ -22,6 +23,7 @@ from .permissions import IsAuthenticatedForPostAndPatch
 from .serializers import (FavoriteSerializer, IngredientsSerializer,
                           RecipesGetSerializer, RecipesPostSerializer,
                           TagSerializer)
+from .filters import TagFilter
 
 
 class TagsViewSet(
@@ -32,14 +34,16 @@ class TagsViewSet(
     """Обработка тегов для рецептов"""
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    pagination_class = None
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ('slug', 'name')
 
 
 class RecipesViewSet(viewsets.ModelViewSet):
     """Создание и обработка рецептов"""
     queryset = Recipe.objects.all()
-    serializer_class = RecipesPostSerializer
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
-    filterset_fields = ('author', 'shopping_cart', 'favorite', 'tags')
+    filterset_class = TagFilter
     permission_classes = (IsAuthenticatedForPostAndPatch,)
     ordering = ('-pub_date',)
 
@@ -60,7 +64,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
         if request.method == 'POST':
             if recipe in favorites:
                 return Response(
-                    'Уже добавлено в список покупок',
+                    'Уже добавлено в избранное',
                     status=status.HTTP_400_BAD_REQUEST
                 )
             recipe.favorite.add(request.user)
@@ -104,46 +108,26 @@ class RecipesViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         """Создание pdf."""
-        user = request.user
-        shop_list = user.shopping_cart_all.all()
-        lst = []
-        final = []
-        for recipe in shop_list:
-            """Создаем список со всеми ингредиентами"""
-            ingredients = recipe.ingredients
-            lst.append(
-                ingredients.values(
-                    'name',
-                    'measure_unit',
-                    amount=F('ingredient_ammount__amount')
-                )
-            )
-        for object in lst:
-            """Создаем список со вложенными списками, каждый из которых 
-            состоит из названия и количества ингредиента"""
-            result = [entry for entry in object]
-            for i in range(0, len(result)):
-                semi_list = [result[i].get('name'), result[i].get('amount')]
-                final.append(semi_list)
-        db = {}
-        for name, value in final:
-            """Формируем словарь с набором данных name:amount, а также
-            суммируем значения amount, если ингредиент уже встречался"""
-            db[name] = db.get(name, 0) + value
-        pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
+        shopping_cart = (
+            request.user.shopping_cart_all.
+                values(
+                'ingredients__name',
+                'ingredients__measurement_unit'
+            ).annotate(amount=Sum('ingredient_ammount__amount')))
+        pdfmetrics.registerFont(TTFont('Arial', 'templates/fonts/arial.ttf'))
         buffer = io.BytesIO()
         canvas1 = canvas.Canvas(buffer)
         canvas1.setLineWidth(.3)
         canvas1.setFont('Arial', 12)
         canvas1.drawString(30, 800, 'Список ваших покупок:')
-        canvas1.drawString(
-            320, 800, 'В foodgram 1.1 появятся единицы измерения,'
-        )
-        canvas1.drawString(320, 785, 'мы чуть-чуть не успеваем :)')
         canvas1.line(27, 790, 180, 790)
         a = 0
-        for ingredient, amount in db.items():
-            canvas1.drawString(30, 770 - a, str(f'{ingredient} : {amount}'))
+        for recipe in shopping_cart:
+            canvas1.drawString(30, 770 - a, str(
+                f'Ингредиент: {recipe.get("ingredients__name")}, '
+                f'Количество: {recipe.get("amount")}, '
+                f'Ед. измерения: {recipe.get("ingredients__measurement_unit")}'
+            ))
             a += 15
         canvas1.line(27, 770 - a, 180, 770 - a)
         canvas1.save()
@@ -156,5 +140,5 @@ class IngredientsViewSet(viewsets.ModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientsSerializer
     pagination_class = None
-    filter_backends = (filters.SearchFilter, )
+    filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)

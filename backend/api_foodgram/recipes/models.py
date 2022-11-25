@@ -7,17 +7,23 @@ User = settings.AUTH_USER_MODEL
 
 class Ingredient(models.Model):
     name = models.CharField('Название', max_length=300)
-    measure_unit = models.CharField(
+    measurement_unit = models.CharField(
         'Единица измерения',
         max_length=15
     )
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Ингредиент'
         verbose_name_plural = 'Ингредиенты'
+        constraints = [
+            models.UniqueConstraint(
+                fields=('name', 'measurement_unit'),
+                name='unique_name_measurement_unit'
+            )
+        ]
+
+    def __str__(self):
+        return self.name
 
 
 class Tag(models.Model):
@@ -25,12 +31,12 @@ class Tag(models.Model):
     color = models.CharField('Цветовой HEX-код', max_length=15)
     slug = models.SlugField(max_length=160, unique=True)
 
-    def __str__(self):
-        return self.name
-
     class Meta:
         verbose_name = 'Тег'
         verbose_name_plural = 'Теги'
+
+    def __str__(self):
+        return self.name
 
 
 class Recipe(models.Model):
@@ -65,17 +71,16 @@ class Recipe(models.Model):
         User,
         related_name='shopping_cart_all',
         verbose_name='Список покупок',
-        blank=True
+        blank=True,
+        null=True
     )
     favorite = models.ManyToManyField(
         User,
         related_name='favorite_all',
         verbose_name='Избранное',
-        blank=True
+        blank=True,
+        null=True
     )
-
-    def __str__(self):
-        return self.name
 
     class Meta:
         verbose_name = 'Рецепт'
@@ -86,6 +91,9 @@ class Recipe(models.Model):
                 name='unique_author_name'
             )
         ]
+
+    def __str__(self):
+        return self.name
 
 
 class IngredientAmount(models.Model):
@@ -98,10 +106,7 @@ class IngredientAmount(models.Model):
         on_delete=models.CASCADE
     )
     amount = models.PositiveSmallIntegerField(
-        'Количество',
-        validators=[
-            MinValueValidator(1, message='Количество больше 1!')
-        ]
+        'Количество'
     )
 
     class Meta:

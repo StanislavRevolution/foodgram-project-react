@@ -1,22 +1,26 @@
 from django.contrib.auth import get_user_model
 from django.db.models import F
+from django.db import transaction
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 from rest_framework.validators import UniqueTogetherValidator
+from collections import Counter
 
 from users.serializers import UserSerializer
 
 from .models import Ingredient, IngredientAmount, Recipe, Tag
+from .filters import TagFilter
 
 User = get_user_model()
 
 
 class TagSerializer(serializers.ModelSerializer):
     """Сериализатор для тэгов"""
+
     class Meta:
         model = Tag
-        fields = ('id', 'name', 'color', 'slug')
+        fields = '__all__'
 
 
 class IngredientsAmountSerializer(serializers.ModelSerializer):
@@ -32,9 +36,10 @@ class IngredientsAmountSerializer(serializers.ModelSerializer):
 
 class IngredientsSerializer(serializers.ModelSerializer):
     """Сериализатор для ингредиентов"""
+
     class Meta:
         model = Ingredient
-        fields = ('id', 'name', 'measure_unit')
+        fields = ('id', 'name', 'measurement_unit')
 
     def validate(self, data):
         """Проверка времени приготовления"""
@@ -54,7 +59,7 @@ class RecipesGetSerializer(serializers.ModelSerializer):
     def get_ingredients(self, obj):
         """Получить ингредиенты, связанные с данным рецептом"""
         return obj.ingredients.values(
-            'id', 'name', 'measure_unit',
+            'id', 'name', 'measurement_unit',
             amount=F('ingredient_ammount__amount')
         )
 
@@ -62,21 +67,19 @@ class RecipesGetSerializer(serializers.ModelSerializer):
         """Получить True в случае, если рецепт добавлен в избранное, и False,
         если рецепт отсутствует в избранном пользователя"""
         user = self.context['request'].user
-        if user.is_authenticated:
-            if obj in user.favorite_all.all():
-                return True
-            return False
-        return False
+        return (
+                user.is_authenticated and
+                user.favorite_all.filter(id=obj.id).exists()
+        )
 
     def get_is_in_shopping_cart(self, obj):
         """Получить True в случае, если рецепт добавлен в список покупок,
          и False, если рецепт отсутствует в списке покупок пользователя"""
         user = self.context['request'].user
-        if user.is_authenticated:
-            if obj in user.shopping_cart_all.all():
-                return True
-            return False
-        return False
+        return (
+                user.is_authenticated and
+                user.shopping_cart_all.filter(id=obj.id).exists()
+        )
 
     class Meta:
         model = Recipe
@@ -92,6 +95,7 @@ class RecipesGetSerializer(serializers.ModelSerializer):
             'text',
             'cooking_time',
         )
+        filterset_class = TagFilter
 
 
 class RecipesPostSerializer(serializers.ModelSerializer):
@@ -124,23 +128,46 @@ class RecipesPostSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
-        """Проверка времени приготовления, а также существования тэгов в БД"""
+        """Проверка времени приготовления, дубликатов ингредиентов,
+        проверка количества, проверка существования тегов"""
+
+        # время приготовления больше 0
         if data['cooking_time'] < 1:
             raise serializers.ValidationError(
                 'Неверно указано время приготовления!'
             )
+        ings = data['ingredients']
+        # проверка на отрицательное количество
+        amounts = [(ing.get('id'), ing.get('amount'))
+                   for ing in ings
+                   if ing.get('amount') < 1]
+        if amounts:
+            raise serializers.ValidationError(
+                f'Неверно указано значение количества для: {dict(amounts)}'
+            )
+        # проверка дубликатов среди ингредиентов
+        titles = [title.get('id') for title in ings]
+        duplicates = [k for k, v in Counter(titles).items() if v > 1]
+        if duplicates:
+            raise serializers.ValidationError(
+                f'Указаны дубликаты ингредиентов: {list(duplicates)}'
+            )
+        # проверка существования тегов в БД
         tags = set(data['tags'])
         for tag in tags:
             if tag not in Tag.objects.all():
-                print('Max')
                 raise serializers.ValidationError(
                     'Такого тега не существует!'
                 )
         return data
 
-    def create(self, validated_data):
+    def set_user_and_remove_ingredients(self, validated_data):
         validated_data['author'] = self.context['request'].user
-        ingredients = validated_data.pop('ingredients')
+        return validated_data.pop('ingredients')
+
+    @transaction.atomic()
+    def create(self, validated_data):
+        ingredients = self.set_user_and_remove_ingredients(validated_data)
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
         for ingredient in ingredients:
@@ -154,17 +181,10 @@ class RecipesPostSerializer(serializers.ModelSerializer):
         recipe.save()
         return recipe
 
+    @transaction.atomic()
     def update(self, instance, validated_data):
-        validated_data['author'] = self.context['request'].user
-        instance.name = validated_data.get('name', instance.name)
-        instance.text = validated_data.get('text', instance.text)
-        instance.cooking_time = validated_data.get(
-            'cooking_time',
-            instance.cooking_time
-        )
-        instance.image = validated_data.get('image', instance.image)
+        ingredients = self.set_user_and_remove_ingredients(validated_data)
         instance.tags.set(validated_data.pop('tags'))
-        ingredients = validated_data.pop('ingredients')
         for ingredient in ingredients:
             ingredient = dict(ingredient)
             current_ingredient = get_object_or_404(
