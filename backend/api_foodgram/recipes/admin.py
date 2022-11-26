@@ -2,7 +2,6 @@ from django.contrib import admin
 
 from .models import Follow, Ingredient, IngredientAmount, Recipe, Tag
 
-
 admin.site.register(Follow)
 admin.site.register(Tag)
 admin.site.register(IngredientAmount)

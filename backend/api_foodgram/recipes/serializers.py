@@ -1,16 +1,16 @@
+from collections import Counter
+
 from django.contrib.auth import get_user_model
-from django.db.models import F
 from django.db import transaction
+from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 from rest_framework.validators import UniqueTogetherValidator
-from collections import Counter
-
 from users.serializers import UserSerializer
 
-from .models import Ingredient, IngredientAmount, Recipe, Tag
 from .filters import TagFilter
+from .models import Ingredient, IngredientAmount, Recipe, Tag
 
 User = get_user_model()
 
