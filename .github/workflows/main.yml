@@ -48,7 +48,7 @@ jobs:
           context: backend/
           file: ./backend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/yamdb
+          tags: ${{ secrets.DOCKER_USERNAME }}/foodgram
 
   deploy:
     runs-on: ubuntu-latest
