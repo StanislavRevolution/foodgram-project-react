@@ -1,7 +1,6 @@
 import io
 
-import django_filters
-from django.db.models import F, Sum
+from django.db.models import Sum
 from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from reportlab.pdfbase import pdfmetrics
@@ -109,8 +108,7 @@ class RecipesViewSet(viewsets.ModelViewSet):
     def download_shopping_cart(self, request):
         """Создание pdf."""
         shopping_cart = (
-            request.user.shopping_cart_all.
-                values(
+            request.user.shopping_cart_all.values(
                 'ingredients__name',
                 'ingredients__measurement_unit'
             ).annotate(amount=Sum('ingredient_ammount__amount')))

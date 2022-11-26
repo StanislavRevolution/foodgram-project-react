@@ -67,19 +67,17 @@ class RecipesGetSerializer(serializers.ModelSerializer):
         """Получить True в случае, если рецепт добавлен в избранное, и False,
         если рецепт отсутствует в избранном пользователя"""
         user = self.context['request'].user
-        return (
-                user.is_authenticated and
-                user.favorite_all.filter(id=obj.id).exists()
-        )
+        return (user.is_authenticated
+                and user.favorite_all.filter(id=obj.id).exists()
+                )
 
     def get_is_in_shopping_cart(self, obj):
         """Получить True в случае, если рецепт добавлен в список покупок,
          и False, если рецепт отсутствует в списке покупок пользователя"""
         user = self.context['request'].user
-        return (
-                user.is_authenticated and
-                user.shopping_cart_all.filter(id=obj.id).exists()
-        )
+        return (user.is_authenticated
+                and user.shopping_cart_all.filter(id=obj.id).exists()
+                )
 
     class Meta:
         model = Recipe
@@ -202,6 +200,7 @@ class RecipesPostSerializer(serializers.ModelSerializer):
 
 class FavoriteSerializer(serializers.ModelSerializer):
     """Сериализатор для избранных рецептов"""
+
     class Meta:
         model = Recipe
         fields = ('id', 'name', 'image', 'cooking_time')

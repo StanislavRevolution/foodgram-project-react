@@ -34,11 +34,11 @@ class UserSerializer(serializers.ModelSerializer):
         """Получить True в случае, если пользователь подписан на данного
          автора, и False, если подписка отсутствует"""
         return (
-                self.context['request'].user.is_authenticated and
-                Follow.objects.filter(
-                    user=self.context['request'].user,
-                    author=obj
-                ).exists()
+                self.context['request'].user.is_authenticated
+                and Follow.objects.filter(
+            user=self.context['request'].user,
+            author=obj
+        ).exists()
         )
 
 
@@ -82,8 +82,8 @@ class SubscribeSerializer(serializers.ModelSerializer):
         """Получить True в случае, если пользователь подписан на данного
          автора, и False, если подписка отсутствует"""
         return (
-                self.context['request'].user.is_authenticated and
-                Follow.objects.filter(
+                self.context['request'].user.is_authenticated
+                and Follow.objects.filter(
                     user=self.context['request'].user,
                     author=obj
                 ).exists()
@@ -91,7 +91,6 @@ class SubscribeSerializer(serializers.ModelSerializer):
 
     def get_recipes_count(self, obj):
         """Получить количество рецептов, созданных пользователем"""
-        return (
-                self.context['request'].user.is_authenticated and
-                obj.author.all().count()
-        )
+        return (self.context['request'].user.is_authenticated
+                and obj.author.all().count()
+                )

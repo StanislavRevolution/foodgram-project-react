@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import permissions, status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -39,9 +39,9 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             return Response(serializer.data)
         subscribe = Follow.objects.get(
-                user=request.user,
-                author=author
-            )
+            user=request.user,
+            author=author
+        )
         subscribe.delete()
         return Response('Подписка удалена!', status=status.HTTP_204_NO_CONTENT)
 

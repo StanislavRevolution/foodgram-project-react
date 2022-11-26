@@ -10,7 +10,7 @@ services:
 
   web:
     build:
-      context: ../backend
+      context: stanislavorlovskiy/foodgram:latest
       dockerfile: Dockerfile
     volumes:
       - static_value:/app/static/
