@@ -34,7 +34,7 @@ class TagsViewSet(
 
 class RecipesViewSet(viewsets.ModelViewSet):
     """Создание и обработка рецептов"""
-    queryset = Recipe.objects.all()
+    queryset = Recipe.objects.select_related('author').all()
     filter_backends = (DjangoFilterBackend, filters.OrderingFilter)
     filterset_class = TagFilter
     permission_classes = (IsAuthenticatedForPostAndPatch,)
@@ -44,6 +44,15 @@ class RecipesViewSet(viewsets.ModelViewSet):
         if self.request.method == 'GET':
             return RecipesGetSerializer
         return RecipesPostSerializer
+
+    def get_queryset(self):
+        qs = Recipe.objects
+        print(self.request.query_params)
+        if self.request.query_params.get('is_favorited'):
+            qs = qs.filter(favorite__username=self.request.user)
+        if self.request.query_params.get('is_in_shopping_cart'):
+            qs = qs.filter(shopping_cart__username=self.request.user)
+        return qs
 
     @action(
         methods=['post', 'delete'],
