@@ -9,8 +9,8 @@ http://yapiproject2.ddns.net
 - Django 2.2.16
 - Django Rest Framework 3.12.4
 ### Логин и пароль от админки
-- Login: admin
-- Password: admin
+- Login: admin1
+- Password: admin1
 ### Автор
 * Станислав Орловский
 
