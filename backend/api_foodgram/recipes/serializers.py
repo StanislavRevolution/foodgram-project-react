@@ -5,12 +5,16 @@ from django.db import transaction
 from django.db.models import F
 from drf_extra_fields.fields import Base64ImageField
 from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
 from rest_framework.validators import UniqueTogetherValidator
-from users.serializers import UserSerializer
 
+from users.serializers import UserSerializer
 from .filters import TagFilter
 from .models import Ingredient, IngredientAmount, Recipe, Tag
+from .utils import (
+    correct_cooking_time,
+    set_user_and_remove_ingredients,
+    add_ingredient_amount_to_recipe
+)
 
 User = get_user_model()
 
@@ -40,12 +44,6 @@ class IngredientsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
         fields = ('id', 'name', 'measurement_unit')
-
-    def validate(self, data):
-        """Проверка времени приготовления"""
-        if data['cooking_time'] < 1:
-            raise serializers.ValidationError("Cooking_time can't be 0!")
-        return data
 
 
 class RecipesGetSerializer(serializers.ModelSerializer):
@@ -104,6 +102,7 @@ class RecipesPostSerializer(serializers.ModelSerializer):
         default=serializers.CurrentUserDefault()
     )
     ingredients = IngredientsAmountSerializer(many=True)
+    cooking_time = serializers.IntegerField(validators=[correct_cooking_time])
 
     class Meta:
         model = Recipe
@@ -129,51 +128,44 @@ class RecipesPostSerializer(serializers.ModelSerializer):
         """Проверка времени приготовления, дубликатов ингредиентов,
         проверка количества, проверка существования тегов"""
 
-        # время приготовления больше 0
-        if data['cooking_time'] < 1:
-            raise serializers.ValidationError(
-                'Неверно указано время приготовления!'
-            )
-        ings = data['ingredients']
         # проверка на отрицательное количество
+        ings = data['ingredients']
         amounts = [(ing.get('id'), ing.get('amount'))
                    for ing in ings
                    if ing.get('amount') < 1]
         if amounts:
             raise serializers.ValidationError(
-                f'Неверно указано значение количества для: {dict(amounts)}'
+                f'Значение не может быть меньше 1 для кол-ва: '
+                f'{", ".join(map(str, dict(amounts)))}'
             )
         # проверка дубликатов среди ингредиентов
         titles = [title.get('id') for title in ings]
         duplicates = [k for k, v in Counter(titles).items() if v > 1]
         if duplicates:
             raise serializers.ValidationError(
-                f'Указаны дубликаты ингредиентов: {list(duplicates)}'
+                f'Указаны дубликаты ингредиентов: '
+                f'{", ".join(map(str, duplicates))}'
             )
         # проверка существования тегов в БД
         tags = set(data['tags'])
+        tag_names = [tag.get('name') for tag in Tag.objects.values('name')]
         for tag in tags:
             if tag not in Tag.objects.all():
                 raise serializers.ValidationError(
-                    'Такого тега не существует!'
+                    f'Такого тега не существует! '
+                    f'Выберите из вариантов: {", ".join(map(str, tag_names))}'
                 )
         return data
 
-    def set_user_and_remove_ingredients(self, validated_data):
-        validated_data['author'] = self.context['request'].user
-        return validated_data.pop('ingredients')
-
     @transaction.atomic()
     def create(self, validated_data):
-        ingredients = self.set_user_and_remove_ingredients(validated_data)
+        ingredients = set_user_and_remove_ingredients(self, validated_data)
         tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
         for ingredient in ingredients:
-            ingredient = dict(ingredient)
-            IngredientAmount.objects.create(
-                ingredient=ingredient.get('id'),
-                amount=ingredient.get('amount'),
-                recipe=recipe
+            add_ingredient_amount_to_recipe(
+                recipe=recipe,
+                ingredient=ingredient
             )
         recipe.tags.set(tags)
         recipe.save()
@@ -181,16 +173,17 @@ class RecipesPostSerializer(serializers.ModelSerializer):
 
     @transaction.atomic()
     def update(self, instance, validated_data):
-        ingredients = self.set_user_and_remove_ingredients(validated_data)
+        ingredients = set_user_and_remove_ingredients(self, validated_data)
         instance.tags.set(validated_data.pop('tags'))
         for ingredient in ingredients:
-            ingredient = dict(ingredient)
-            current_ingredient = get_object_or_404(
-                IngredientAmount,
+            IngredientAmount.objects.get(
                 ingredient=ingredient.get('id'),
                 recipe=instance
+            ).delete()
+            add_ingredient_amount_to_recipe(
+                recipe=instance,
+                ingredient=ingredient
             )
-            current_ingredient.amount = ingredient.get('amount')
         return super().update(instance, validated_data)
 
     def to_representation(self, instance):

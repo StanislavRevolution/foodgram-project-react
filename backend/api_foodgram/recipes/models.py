@@ -58,9 +58,9 @@ class Recipe(models.Model):
     tags = models.ManyToManyField(Tag, related_name='tag', verbose_name='Тэг')
     cooking_time = models.PositiveSmallIntegerField(
         'Время приготовления',
-        default=0,
+        default=1,
         validators=[
-            MinValueValidator(1, message='Время приготовления больше 0!')
+            MinValueValidator(1)
         ]
     )
     pub_date = models.DateTimeField(
@@ -154,4 +154,4 @@ class Follow(models.Model):
     def __str__(self):
         user = self.user
         author = self.author
-        return str(user) + " ; " + str(author)
+        return f'{user.name}:{author.name}'

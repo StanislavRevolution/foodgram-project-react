@@ -1,22 +1,16 @@
-import io
-
-from django.db.models import Sum
-from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen import canvas
 from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from .filters import TagFilter
+from .filters import TagFilter, SearchIngredientFilter
 from .models import Ingredient, Recipe, Tag
 from .permissions import IsAuthenticatedForPostAndPatch
 from .serializers import (FavoriteSerializer, IngredientsSerializer,
                           RecipesGetSerializer, RecipesPostSerializer,
                           TagSerializer)
+from .utils import create_user_shopping_cart
 
 
 class TagsViewSet(
@@ -47,7 +41,6 @@ class RecipesViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Recipe.objects
-        print(self.request.query_params)
         if self.request.query_params.get('is_favorited'):
             qs = qs.filter(favorite__username=self.request.user)
         if self.request.query_params.get('is_in_shopping_cart'):
@@ -110,36 +103,13 @@ class RecipesViewSet(viewsets.ModelViewSet):
     )
     def download_shopping_cart(self, request):
         """Создание pdf."""
-        shopping_cart = (
-            request.user.shopping_cart_all.values(
-                'ingredients__name',
-                'ingredients__measurement_unit'
-            ).annotate(amount=Sum('ingredient_ammount__amount')))
-        pdfmetrics.registerFont(TTFont('Arial', 'templates/fonts/arial.ttf'))
-        buffer = io.BytesIO()
-        canvas1 = canvas.Canvas(buffer)
-        canvas1.setLineWidth(.3)
-        canvas1.setFont('Arial', 12)
-        canvas1.drawString(30, 800, 'Список ваших покупок:')
-        canvas1.line(27, 790, 180, 790)
-        a = 0
-        for recipe in shopping_cart:
-            canvas1.drawString(30, 770 - a, str(
-                f'Ингредиент: {recipe.get("ingredients__name")}, '
-                f'Количество: {recipe.get("amount")}, '
-                f'Ед. измерения: {recipe.get("ingredients__measurement_unit")}'
-            ))
-            a += 15
-        canvas1.line(27, 770 - a, 180, 770 - a)
-        canvas1.save()
-        buffer.seek(0)
-        return FileResponse(buffer, as_attachment=True, filename='hello.pdf')
+        return create_user_shopping_cart(request)
 
 
 class IngredientsViewSet(viewsets.ModelViewSet):
     """Обработка ингредиентов"""
     queryset = Ingredient.objects.all()
     serializer_class = IngredientsSerializer
+    filter_backends = (DjangoFilterBackend, SearchIngredientFilter)
+    search_fields = ('^name', )
     pagination_class = None
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
